@@ -1230,7 +1230,7 @@ namespace NS_SLUA {
 #elif ENGINE_MAJOR_VERSION >= 5
             if (GSluaEnableReference || (up->GetCastFlags() & ReferenceCastFlags))
 #else
-            if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
+            if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()) || up->IsA(FMapProperty::StaticClass()) || up->IsA(FSetProperty::StaticClass()))
 #endif
             {
                 auto referencePusher = getReferencePusher(up);
@@ -2408,7 +2408,7 @@ namespace NS_SLUA {
         return ls->buf;
     }
 
-    const char* LuaObject::getType(lua_State* L, int p) {
+    const char* getType(lua_State* L, int p) {
         if (!lua_isuserdata(L, p)) {
             return "";
         }
@@ -2448,7 +2448,7 @@ namespace NS_SLUA {
             p->SetPropertyValue(parms, softObjectPtr);
             return nullptr;
         }
-        auto typeName = LuaObject::getType(L, i);
+        auto typeName = getType(L, i);
         if (strcmp(typeName, "UObject") == 0) {
             const UObject* obj = LuaObject::checkUD<UObject>(L, i);;
             if (obj && obj->GetClass() != p->PropertyClass && !obj->GetClass()->IsChildOf(p->PropertyClass))
@@ -2481,7 +2481,7 @@ namespace NS_SLUA {
             p->SetPropertyValue(parms, softObjectPtr);
             return nullptr;
         }
-        auto typeName = LuaObject::getType(L, i);
+        auto typeName = getType(L, i);
         if (strcmp(typeName, "UClass") == 0) {
             const UClass* cls = LuaObject::checkUD<UClass>(L, i);;
             if (cls && cls != p->MetaClass && !cls->IsChildOf(p->MetaClass))
@@ -2992,7 +2992,8 @@ namespace NS_SLUA {
 #elif ENGINE_MAJOR_VERSION >= 5
         if (GSluaEnableReference || (up->GetCastFlags() & ReferenceCastFlags))
 #else
-        if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
+        FFieldClass* fieldClass = up->GetClass();
+        if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()) || up->IsA(FMapProperty::StaticClass()) || up->IsA(FSetProperty::StaticClass()))
 #endif
         
         {
