@@ -1,3 +1,4 @@
+    DefTypeName(FSlateColor);
     DefTypeName(FIntPoint);
     DefTypeName(FIntVector);
     DefTypeName(FIntVector4);

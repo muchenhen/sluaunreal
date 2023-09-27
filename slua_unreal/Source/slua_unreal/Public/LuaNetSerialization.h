@@ -87,30 +87,30 @@ struct FLuaNetSerializerGuidReferences
     int32 numBufferBits;
 };
 
+#if (ENGINE_MINOR_VERSION<=25) && (ENGINE_MAJOR_VERSION==4)
 /** Holds the unique identifier and offsets/lengths of a net serialized property used for Shared Serialization */
-struct FLuaRepSerializedPropertyInfo
+struct FRepSerializedPropertyInfo
 {
-    FLuaRepSerializedPropertyInfo():
+    FRepSerializedPropertyInfo():
+        Guid(),
         BitOffset(0),
-        BitLength(0),
-        bShared(false),
-        bArray(false)
+        BitLength(0)
     {}
-    
+
+    /** Unique identifier for this property, may include array index and depth. */
+    FGuid Guid;
+
     /** Bit offset into shared buffer of the shared data */
     int32 BitOffset;
 
     /** Length in bits of all serialized data for this property, may include handle and checksum. */
     int32 BitLength;
-
-    bool bShared;
-    bool bArray;
 };
 
 /** Holds a set of shared net serialized properties */
-struct FLuaRepSerializationSharedInfo
+struct FRepSerializationSharedInfo
 {
-    FLuaRepSerializationSharedInfo():
+    FRepSerializationSharedInfo():
         SerializedProperties(MakeUnique<FNetBitWriter>(0)),
         bIsValid(false)
     {}
@@ -118,14 +118,6 @@ struct FLuaRepSerializationSharedInfo
     void SetValid()
     {
         bIsValid = true;
-    }
-
-    void Init()
-    {
-        if (!SerializedProperties.IsValid())
-        {
-            SerializedProperties.Reset(new FNetBitWriter(0));
-        }
     }
 
     bool IsValid() const
@@ -145,7 +137,7 @@ struct FLuaRepSerializationSharedInfo
     }
 
     /** Metadata for properties in the shared data blob. */
-    TArray<FLuaRepSerializedPropertyInfo> SharedPropertyInfo;
+    TArray<FRepSerializedPropertyInfo> SharedPropertyInfo;
 
     /** Binary blob of net serialized data to be shared */
     TUniquePtr<FNetBitWriter> SerializedProperties;
@@ -155,6 +147,7 @@ private:
     /** Whether or not shared serialization data has been successfully built. */
     bool bIsValid;
 };
+#endif
 
 struct FLuaNetSerializationProxy : public FGCObject
 {
@@ -186,8 +179,8 @@ struct FLuaNetSerializationProxy : public FGCObject
     uint32 lastReplicationFrame = 0;
     bool bDirtyThisFrame = false;
 
-    FLuaRepSerializationSharedInfo sharedSerialization;
-    TMap<int32, FLuaRepSerializationSharedInfo> sharedArraySerialization;
+    FRepSerializationSharedInfo sharedSerialization;
+    TMap<int32, FRepSerializationSharedInfo> sharedArraySerialization;
 
 #if !((ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4))
     FReplicationFlags repFlags;
@@ -195,13 +188,6 @@ struct FLuaNetSerializationProxy : public FGCObject
 #endif
 
     virtual void AddReferencedObjects( FReferenceCollector& Collector );
-#if !((ENGINE_MINOR_VERSION<20) && (ENGINE_MAJOR_VERSION==4))
-    virtual FString GetReferencerName() const override
-    {
-        return FString::Printf(TEXT("FLuaNetSerializationProxy, Owner: %s."), owner.IsValid() ? *owner->GetName() : TEXT("NULL"));
-    }
-#endif
-
     ~FLuaNetSerializationProxy();
 };
 

@@ -19,6 +19,7 @@
 #include "LuaBlueprintLibrary.h"
 #include "slua.h"
 #include "Styling/SlateBrush.h"
+#include "Blueprint/UserWidget.h"
 #include "SluaTestCase.generated.h"
 
 USTRUCT(BlueprintType)

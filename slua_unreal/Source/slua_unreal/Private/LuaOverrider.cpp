@@ -202,14 +202,7 @@ void ULuaOverrider::luaOverrideFunc(UObject* Context, FFrame& Stack, RESULT_DECL
             Stack.PropertyChainForCompiledIn = superFunction->ChildProperties;
 #endif
 
-#if (ENGINE_MINOR_VERSION>=3) && (ENGINE_MAJOR_VERSION==5)
-            static auto ULuaOverrideClass = ULuaOverrider::StaticClass();
-            static auto BlueprintFunc = ULuaOverrideClass->FindFunctionByName(NS_SLUA::LuaOverrider::TRIGGER_ANIM_NOTIFY_FUNCTION_NAME);
-            static auto ProcessInternalNativeFunc = BlueprintFunc->GetNativeFunc();
-            if (superFunction->GetNativeFunc() == ProcessInternalNativeFunc)
-#else
             if (superFunction->GetNativeFunc() == (NS_SLUA::FNativeFuncPtr)&UObject::ProcessInternal)
-#endif
             {
                 if (newCode)
                 {
@@ -487,7 +480,6 @@ namespace NS_SLUA
     const char* LuaOverrider::SUPER_NAME = "Super";
     const char* LuaOverrider::CACHE_NAME = "__cache";
     const char* LuaOverrider::INSTANCE_CACHE_NAME = "__instance_cache";
-    const FName LuaOverrider::TRIGGER_ANIM_NOTIFY_FUNCTION_NAME = TEXT("TriggerAnimNotify");
 #if WITH_EDITOR
     ULuaOverrider::ClassNativeMap LuaOverrider::cacheNativeFuncs;
     TMap<UClass*, TArray<TWeakObjectPtr<UFunction>>> LuaOverrider::classAddedFuncs;
@@ -531,7 +523,7 @@ namespace NS_SLUA
         blueprintFlushDelegate = blueprintFlushReinstancingQueue.AddRaw(this, &LuaOverrider::onAsyncLoadingFlushUpdate);
 #endif
         auto ULuaOverrideClass = ULuaOverrider::StaticClass();
-        animNotifyTemplate = ULuaOverrideClass->FindFunctionByName(TRIGGER_ANIM_NOTIFY_FUNCTION_NAME);
+        animNotifyTemplate = ULuaOverrideClass->FindFunctionByName(FName("TriggerAnimNotify"));
 
         initInputs();
     }
@@ -861,36 +853,15 @@ namespace NS_SLUA
 
                     if (LuaNet::luaRPCFuncs.Contains(func))
                     {
-#if (ENGINE_MINOR_VERSION>=3) && (ENGINE_MAJOR_VERSION==5)
-                        auto field = cls->Children.Get();
-                        if (field == func)
+                        for (auto FieldAddress = &cls->Children; (FieldAddress && *FieldAddress); FieldAddress = &((*FieldAddress)->Next))
                         {
-                            cls->Children = func->Next;
-                            func->Next = nullptr;
-                        }
-                        else
-                        {
-                            for (auto fieldAddress = &field->Next; (fieldAddress && *fieldAddress); fieldAddress = &((*fieldAddress)->Next))
+                            if (*FieldAddress == func)
                             {
-                                if (*fieldAddress == func)
-                                {
-                                    *fieldAddress = func->Next;
-                                    func->Next = nullptr;
-                                    break;
-                                }
-                            }
-                        }
-#else
-                        for (auto fieldAddress = &cls->Children; (fieldAddress && *fieldAddress); fieldAddress = &((*fieldAddress)->Next))
-                        {
-                            if (*fieldAddress == func)
-                            {
-                                *fieldAddress = func->Next;
+                                *FieldAddress = func->Next;
                                 func->Next = nullptr;
                                 break;
                             }
                         }
-#endif
 
                         cls->NetFields.Remove(func);
                         LuaNet::luaRPCFuncs.Remove(func);
