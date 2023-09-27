@@ -142,7 +142,7 @@ namespace NS_SLUA {
         #if PLATFORM_WINDOWS
         result = ioctlsocket(fd, FIONREAD, &nread);
         #else
-        result = ioctl(fd, FIONREAD, &nread);
+        result = ioctl(fd, IO_READ, &nread);
         #endif
         
         return result == 0 && nread > 0;

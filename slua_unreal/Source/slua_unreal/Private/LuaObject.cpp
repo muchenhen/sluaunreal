@@ -1140,7 +1140,7 @@ namespace NS_SLUA {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
             if (GSluaEnableReference || up->GetClass()->HasAnyCastFlag(ReferenceCastFlags))
 #else
-            if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
+            if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()))
 #endif
             {
                 auto referencePusher = getReferencePusher(up);
@@ -2623,7 +2623,7 @@ namespace NS_SLUA {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
         if (GSluaEnableReference || up->GetClass()->HasAnyCastFlag(ReferenceCastFlags))
 #else
-        if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
+        if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()))
 #endif
         
         {
