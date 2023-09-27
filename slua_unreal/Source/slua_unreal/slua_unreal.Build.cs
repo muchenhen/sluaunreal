@@ -35,8 +35,8 @@ public class slua_unreal : ModuleRules
             new string[] {
                 externalSource,
                 Path.Combine(externalSource, "lua"),
-                // ... add public include paths required here ...
-            }
+				// ... add public include paths required here ...
+			}
             );
 
         if (Target.Platform == UnrealTargetPlatform.IOS)
@@ -75,12 +75,13 @@ public class slua_unreal : ModuleRules
             PublicAdditionalLibraries.Add(Path.Combine(externalLib, "Linux/liblua.a"));
         }
 
-        PublicDependencyModuleNames.AddRange(
+    PublicDependencyModuleNames.AddRange(
             new string[]
             {
                 "Core",
-                // ... add other public dependencies that you statically link with here ...
-            }
+				"UMG",
+				// ... add other public dependencies that you statically link with here ...
+			}
             );
 
         if (Target.Type == TargetRules.TargetType.Editor)
@@ -97,10 +98,10 @@ public class slua_unreal : ModuleRules
                 "Slate",
                 "SlateCore",
                 "UMG",
-                "InputCore",
-                "NetCore",
-                // ... add private dependencies that you statically link with here ...
-            }
+				"InputCore",
+				"NetCore",
+				// ... add private dependencies that you statically link with here ...	
+			}
             );
 
 #if UE_4_21_OR_LATER
@@ -110,5 +111,13 @@ public class slua_unreal : ModuleRules
         Definitions.Add("ENABLE_PROFILER");
         Definitions.Add("NS_SLUA=slua");
 #endif
+
+
+        DynamicallyLoadedModuleNames.AddRange(
+            new string[]
+            {
+				// ... add any modules that your module loads dynamically here ...
+			}
+            );
     }
 }
