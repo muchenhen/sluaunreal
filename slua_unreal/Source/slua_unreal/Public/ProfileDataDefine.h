@@ -98,10 +98,10 @@ struct SLUA_UNREAL_API FunctionProfileCallInfo
         FString functionName;
 
     UPROPERTY()
-        int64 begTime = 0;
+        int64 begTime;
 
     UPROPERTY()
-        bool bIsCoroutineBegin = false;
+        bool bIsCoroutineBegin;
 
     TSharedPtr<FunctionProfileNode> ProfileNode;
 };
@@ -144,16 +144,4 @@ struct SLUA_UNREAL_API FunctionProfileInfo
         bool isDuplicated = false;
     UPROPERTY()
         TArray<int> mergeIdxArray;
-
-    FunctionProfileInfo():
-        begTime(0),
-        endTime(0),
-        costTime(0),
-        mergedCostTime(0),
-        globalIdx(0),
-        layerIdx(0),
-        mergedNum(0),
-        beMerged(false)
-    {
-    }
 };
