@@ -1140,7 +1140,7 @@ namespace NS_SLUA {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
             if (GSluaEnableReference || up->GetClass()->HasAnyCastFlag(ReferenceCastFlags))
 #else
-            if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()) || up->IsA(FMapProperty::StaticClass()) || up->IsA(FSetProperty::StaticClass()))
+            if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
 #endif
             {
                 auto referencePusher = getReferencePusher(up);
@@ -1965,7 +1965,7 @@ namespace NS_SLUA {
     bool fillUStructWithTable(lua_State* L, FStructProperty* prop, uint8* params, int i) {
         check(lua_istable(L, i));
 
-        auto* uss = prop->Struct;
+        auto uss = prop->Struct;
 
         for (TFieldIterator<FProperty> it(uss); it; ++it) {
             AutoStack as(L);
@@ -2049,7 +2049,7 @@ namespace NS_SLUA {
         return ls->buf;
     }
 
-    const char* getType(lua_State* L, int p) {
+    const char* LuaObject::getType(lua_State* L, int p) {
         if (!lua_isuserdata(L, p)) {
             lua_pop(L, 1);
             return "";
@@ -2090,7 +2090,7 @@ namespace NS_SLUA {
             p->SetPropertyValue(parms, softObjectPtr);
             return nullptr;
         }
-        auto typeName = getType(L, i);
+        auto typeName = LuaObject::getType(L, i);
         if (strcmp(typeName, "UObject") == 0) {
             const UObject* obj = LuaObject::checkUD<UObject>(L, i);;
             if (obj && obj->GetClass() != p->PropertyClass && !obj->GetClass()->IsChildOf(p->PropertyClass))
@@ -2123,7 +2123,7 @@ namespace NS_SLUA {
             p->SetPropertyValue(parms, softObjectPtr);
             return nullptr;
         }
-        auto typeName = getType(L, i);
+        auto typeName = LuaObject::getType(L, i);
         if (strcmp(typeName, "UClass") == 0) {
             const UClass* cls = LuaObject::checkUD<UClass>(L, i);;
             if (cls && cls != p->MetaClass && !cls->IsChildOf(p->MetaClass))
@@ -2623,8 +2623,7 @@ namespace NS_SLUA {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
         if (GSluaEnableReference || up->GetClass()->HasAnyCastFlag(ReferenceCastFlags))
 #else
-        FFieldClass* fieldClass = up->GetClass();
-        if (GSluaEnableReference || up->IsA(FArrayProperty::StaticClass()) || up->IsA(FMapProperty::StaticClass()) || up->IsA(FSetProperty::StaticClass()))
+        if (GSluaEnableReference || up->HasAnyCastFlags(ReferenceCastFlags))
 #endif
         
         {
