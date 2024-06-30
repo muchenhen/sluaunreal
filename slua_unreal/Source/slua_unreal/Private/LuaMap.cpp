@@ -14,9 +14,9 @@
 #include "LuaMap.h"
 #include "SluaLib.h"
 #include "LuaObject.h"
+#include "Log.h"
 #include "LuaState.h"
 #include "LuaReference.h"
-#include "LuaNetSerialization.h"
 
 #define GET_CHECKER(tag) \
     auto tag##Checker = LuaObject::getChecker(UD->tag##Prop);\
@@ -73,23 +73,19 @@ namespace NS_SLUA {
         , helper(FScriptMapHelper::CreateHelperFormInnerProperties(keyProp, valueProp, map))
         , isRef(bIsRef)
         , isNewInner(bIsNewInner)
-        , proxy(nullptr)
-        , luaReplicatedIndex(InvalidReplicatedIndex)
     {
         if (!bIsRef) {
             clone(map,kp,vp,buf);
         }
     }
 
-    LuaMap::LuaMap(FMapProperty* p, FScriptMap* buf, bool bIsRef, FLuaNetSerializationProxy* netProxy, uint16 replicatedIndex)
+    LuaMap::LuaMap(FMapProperty* p, FScriptMap* buf, bool bIsRef)
         : map(bIsRef ? buf : new FScriptMap())
         , keyProp(p->KeyProp)
         , valueProp(p->ValueProp)
         , helper(FScriptMapHelper::CreateHelperFormInnerProperties(keyProp, valueProp, map))
         , isRef(bIsRef)
         , isNewInner(false)
-        , proxy(netProxy)
-        , luaReplicatedIndex(replicatedIndex)
     {
         if (!bIsRef) {
             clone(map,keyProp,valueProp,buf);
@@ -100,8 +96,7 @@ namespace NS_SLUA {
         if (!isRef) {
             clear();
             ensure(map);
-            delete map;
-            map = nullptr;
+            SafeDelete(map);
         }
         if (isNewInner)
         {
@@ -113,31 +108,13 @@ namespace NS_SLUA {
         keyProp = valueProp = nullptr;
     }
 
-    bool LuaMap::markDirty(LuaMap* luaMap)
-    {
-        auto proxy = luaMap->proxy;
-        if (proxy)
-        {
-            proxy->dirtyMark.Add(luaMap->luaReplicatedIndex);
-            proxy->assignTimes++;
-            return true;
-        }
-
-        return false;
-    }
-
     void LuaMap::AddReferencedObjects( FReferenceCollector& Collector )
     {
         if (keyProp) {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
             Collector.AddReferencedObject(keyProp);
 #else
-#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION >= 4
-            TObjectPtr<UObject> ownerObject = keyProp->GetOwnerUObject();
-#else
-            auto ownerObject = keyProp->GetOwnerUObject();
-#endif
-            Collector.AddReferencedObject(ownerObject);
+            keyProp->AddReferencedObjects(Collector);
 #endif
         }
 
@@ -145,12 +122,7 @@ namespace NS_SLUA {
 #if (ENGINE_MINOR_VERSION<25) && (ENGINE_MAJOR_VERSION==4)
             Collector.AddReferencedObject(valueProp);
 #else
-#if ENGINE_MAJOR_VERSION==5 && ENGINE_MINOR_VERSION >= 4
-            TObjectPtr<UObject> ownerObject = valueProp->GetOwnerUObject();
-#else
-            auto ownerObject = valueProp->GetOwnerUObject();
-#endif
-            Collector.AddReferencedObject(ownerObject);
+            valueProp->AddReferencedObjects(Collector);
 #endif
         }
 
@@ -291,55 +263,15 @@ namespace NS_SLUA {
     int LuaMap::__ctor(lua_State* L) {
         auto keyType = (EPropertyClass)LuaObject::checkValue<int>(L, 1);
         auto valueType = (EPropertyClass)LuaObject::checkValue<int>(L, 2);
+        auto cls = LuaObject::checkValueOpt<UClass*>(L, 3, nullptr);
+        auto cls2 = LuaObject::checkValueOpt<UClass*>(L, 4, nullptr);
+        if (keyType == EPropertyClass::Object && !cls)
+            luaL_error(L, "UObject key should have 3rd parameter is UClass");
+        if (valueType == EPropertyClass::Object && !cls2)
+            luaL_error(L, "UObject value should have 4th parameter is UClass");
 
-        FProperty* keyProp;
-        FProperty* valueProp;
-        switch (keyType)
-        {
-        case EPropertyClass::Object:
-            {
-                auto cls = LuaObject::checkValueOpt<UClass*>(L, 3, nullptr);
-                if (!cls)
-                    luaL_error(L, "Map's UObject type of key should have 3rd parameter is UClass");
-                keyProp = PropertyProto::createProperty(PropertyProto(keyType, cls));
-            }
-            break;
-        case EPropertyClass::Struct:
-            {
-                auto scriptStruct = LuaObject::checkValueOpt<UScriptStruct*>(L, 3, nullptr);
-                if (!scriptStruct)
-                    luaL_error(L, "Map's Struct type of key should have 3rd parameter is UStruct");
-                keyProp = PropertyProto::createProperty(PropertyProto(keyType, scriptStruct));
-            }
-            break;
-        default:
-            keyProp = PropertyProto::createProperty(PropertyProto(keyType));
-            break;
-        }
-
-        switch (valueType)
-        {
-        case EPropertyClass::Object:
-            {
-                auto cls = LuaObject::checkValueOpt<UClass*>(L, 4, nullptr);
-                if (!cls)
-                    luaL_error(L, "UObject value should have 4th parameter is UClass");
-                valueProp = PropertyProto::createProperty(PropertyProto(valueType, cls));
-            }
-            break;
-        case EPropertyClass::Struct:
-            {
-                auto scriptStruct = LuaObject::checkValueOpt<UScriptStruct*>(L, 4, nullptr);
-                if (!scriptStruct)
-                    luaL_error(L, "Struct value should have 4th parameter is UStruct");
-                valueProp = PropertyProto::createProperty(PropertyProto(valueType, scriptStruct));
-            }
-            break;
-        default:
-            valueProp = PropertyProto::createProperty(PropertyProto(valueType));
-            break;
-        }
-        
+        auto keyProp = PropertyProto::createProperty(PropertyProto(keyType,cls));
+        auto valueProp = PropertyProto::createProperty(PropertyProto(valueType,cls2));
         return push(L, keyProp, valueProp, nullptr, true);
     }
 
@@ -386,9 +318,6 @@ namespace NS_SLUA {
         keyChecker(L, UD->keyProp, (uint8*)keyPtr, 2, true);
         valueChecker(L, UD->valueProp, (uint8*)valuePtr, 3, true);
         UD->helper.AddPair(keyPtr, valuePtr);
-
-        markDirty(UD);
-
         return 0;
     }
 
@@ -401,9 +330,6 @@ namespace NS_SLUA {
         FDefaultConstructedPropertyElement tempKey(UD->keyProp);
         auto keyPtr = tempKey.GetObjAddress();
         keyChecker(L, UD->keyProp, (uint8*)keyPtr, 2, true);
-
-        markDirty(UD);
-
         return LuaObject::push(L, UD->removePair(keyPtr));
     }
 
@@ -413,9 +339,6 @@ namespace NS_SLUA {
             luaL_error(L, "arg 1 expect LuaMap, but got nil!");
         }
         UD->clear();
-
-        markDirty(UD);
-
         return 0;
     }
 
@@ -483,14 +406,14 @@ namespace NS_SLUA {
     }
 
     int LuaMap::gc(lua_State* L) {
-        auto userdata = (UserData<LuaMap*>*)lua_touserdata(L, 1);
+        auto userdata = (UserData<LuaMap*>*)luaL_testudata(L, 1, "LuaMap");
         auto self = userdata->ud;
         if (!userdata->parent && !(userdata->flag & UD_HADFREE))
             LuaObject::releaseLink(L, self->get());
         if (self->isRef) {
             LuaObject::unlinkProp(L, userdata);
         }
-        delete self;
+        delete userdata->ud;
         return 0;
     }
 

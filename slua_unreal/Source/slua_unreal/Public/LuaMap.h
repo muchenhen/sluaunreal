@@ -51,50 +51,21 @@ namespace NS_SLUA {
         static int push(lua_State* L, LuaMap* luaMap);
         
         template<typename K,typename V>
-        static typename std::enable_if<DeduceType<K>::value != EPropertyClass::Struct && DeduceType<V>::value != EPropertyClass::Struct, int>::type
-    	push(lua_State* L, const TMap<K, V>& v) {
+        static int push(lua_State* L, const TMap<K, V>& v) {
             FProperty* keyProp = PropertyProto::createDeduceProperty<K>();
             FProperty* valueProp = PropertyProto::createDeduceProperty<V>();
             return push(L, keyProp, valueProp, reinterpret_cast<FScriptMap*>(const_cast<TMap<K, V>*>(&v)), false);
         }
 
-        template<typename K, typename V>
-        static typename std::enable_if<DeduceType<K>::value != EPropertyClass::Struct && DeduceType<V>::value == EPropertyClass::Struct, int>::type
-            push(lua_State* L, const TMap<K, V>& v) {
-            FProperty* keyProp = PropertyProto::createDeduceProperty<K>();
-            FProperty* valueProp = PropertyProto::createDeduceProperty<V>(V::StaticStruct());
-            return push(L, keyProp, valueProp, reinterpret_cast<FScriptMap*>(const_cast<TMap<K, V>*>(&v)), false);
-        }
-
-        template<typename K, typename V>
-        static typename std::enable_if<DeduceType<K>::value == EPropertyClass::Struct && DeduceType<V>::value == EPropertyClass::Struct, int>::type
-            push(lua_State* L, const TMap<K, V>& v) {
-            FProperty* keyProp = PropertyProto::createDeduceProperty<K>(K::StaticStruct);
-            FProperty* valueProp = PropertyProto::createDeduceProperty<V>(V::StaticStruct());
-            return push(L, keyProp, valueProp, reinterpret_cast<FScriptMap*>(const_cast<TMap<K, V>*>(&v)), false);
-        }
-
         static void clone(FScriptMap* dest,FProperty* keyProp, FProperty* valueProp,const FScriptMap* src);
 
-        LuaMap(FMapProperty* prop, FScriptMap* buf, bool bIsRef, struct FLuaNetSerializationProxy* netProxy, uint16 replicatedIndex);
+        LuaMap(FMapProperty* prop, FScriptMap* buf, bool bIsRef);
         LuaMap(FProperty* keyProp, FProperty* valueProp, FScriptMap* buf, bool bIsRef, bool bIsNewInner);
         ~LuaMap();
-        
+
         FScriptMap* get() {
             return map;
         }
-
-        FProperty* getKeyProp() const
-        {
-            return keyProp;
-        }
-
-        FProperty* getValueProp() const
-        {
-            return valueProp;
-        }
-
-        static bool markDirty(LuaMap* luaMap);
 
         virtual void AddReferencedObjects( FReferenceCollector& Collector ) override;
 
@@ -148,9 +119,6 @@ namespace NS_SLUA {
         FScriptMapHelper helper;
         bool isRef;
         bool isNewInner;
-
-        struct FLuaNetSerializationProxy* proxy;
-        uint16 luaReplicatedIndex;
 
         static int setupMT(lua_State* L);
         static int gc(lua_State* L);

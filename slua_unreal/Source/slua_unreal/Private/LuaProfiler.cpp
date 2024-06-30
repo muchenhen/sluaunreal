@@ -23,13 +23,9 @@
 #include "LuaStatProfile.h"
 
 #if PLATFORM_WINDOWS
-#include "Windows/AllowWindowsPlatformTypes.h"
-#include "Windows/AllowWindowsPlatformAtomics.h"
-#include <winsock2.h>
-#include "Windows/HideWindowsPlatformAtomics.h"
-#include "Windows/HideWindowsPlatformTypes.h"
-#else
-#include <sys/ioctl.h>
+#ifdef TEXT
+#undef TEXT
+#endif
 #endif
 #include "FLuaCycleCounter.h"
 #include "SluaProfilerDataManager.h"
@@ -138,19 +134,20 @@ namespace NS_SLUA {
             }
         }
     
-        bool checkSocketRead() {
-            int result;
-            u_long nread = 0;
-            t_socket fd = tcpSocket->sock;
-            
-            #if PLATFORM_WINDOWS
-            result = ioctlsocket(fd, FIONREAD, &nread);
-            #else
-            result = ioctl(fd, FIONREAD, &nread);
-            #endif
-            
-            return result == 0 && nread > 0;
-        }
+    bool checkSocketRead() {
+        int result;
+        u_long nread = 0;
+        t_socket fd = tcpSocket->sock;
+        
+        #if PLATFORM_WINDOWS
+        result = ioctlsocket(fd, FIONREAD, &nread);
+        #else
+        result = ioctl(fd, IO_READ, &nread);
+        #endif
+        
+        return result == 0 && nread > 0;
+    }
+
         
         void makeProfilePackage(FArrayWriter& messageWriter,
             int hookEvent, int64 time,
@@ -187,6 +184,7 @@ namespace NS_SLUA {
             messageWriter.Seek(0);
             packageSize = messageWriter.TotalSize() - sizeof(uint32);
             messageWriter << packageSize;
+            
         }
         
         // copy code from buffer.cpp in luasocket

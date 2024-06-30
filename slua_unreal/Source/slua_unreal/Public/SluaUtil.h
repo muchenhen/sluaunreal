@@ -23,6 +23,10 @@
 #include "Engine/World.h"
 #include "lua.h"
 
+#ifndef SafeDelete
+#define SafeDelete(ptr) if(ptr) { delete ptr;ptr=nullptr; }
+#endif
+
 namespace NS_SLUA {
 
     template<typename T>
@@ -128,10 +132,8 @@ namespace NS_SLUA {
     // std::string in unreal4 will caused crash
     // why not use FString
     // FString store wchar_t, we only need char
-    struct SLUA_UNREAL_API SimpleString {
-        static uint32 Seed;
+    struct SimpleString {
         TArray<char> data;
-
         void append(const char* str) {
             if (str == nullptr)
                 return;
@@ -151,36 +153,22 @@ namespace NS_SLUA {
             data.Empty();
         }
 
-        SimpleString()
-        {
-            data.Add(0);
-        }
-
         SimpleString(const char* str)
         {
             append(str);
         }
 
+        SimpleString() {
+            data.Add(0);
+        }
+
         friend int32 GetTypeHash(const SimpleString& simpleString)
         {
-            auto &data = simpleString.data;
-            uint32 Len = data.Num() - 1;
-		    uint32 H = Seed ^ Len;
-		    uint32 Step = (Len >> 2) + 1;
-		    for (; Len >= Step; Len -= Step)
-		    {
-		        H ^= (H << 5) + (H >> 2) + TChar<ANSICHAR>::ToUpper(data[Len - 1]);
-		    }
-
-            return H;
+            return FCrc::Strihash_DEPRECATED(simpleString.c_str());
         }
 
         FORCEINLINE bool operator == (const SimpleString& Other) const
         {
-            if (data.Num() != Other.data.Num())
-            {
-                return false;
-            }
             return FPlatformString::Stricmp(data.GetData(), Other.data.GetData()) == 0;
         }
     };
