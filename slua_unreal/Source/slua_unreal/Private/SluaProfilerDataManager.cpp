@@ -394,7 +394,7 @@ void FProfileDataProcessRunnable::SaveDataWithData(int CpuViewBeginIndex, int Me
 #if (ENGINE_MINOR_VERSION<21) && (ENGINE_MAJOR_VERSION==4)
 FArchiveSaveCompressedProxy CompressProxyLZ4 = FArchiveSaveCompressedProxy(CompressDateLZ4, ECompressionFlags::COMPRESS_ZLIB);
 #else
-    FArchiveSaveCompressedProxy CompressProxyLZ4 = FArchiveSaveCompressedProxy(CompressDateLZ4, NAME_Zlib, ECompressionFlags::COMPRESS_ZLIB);
+    FArchiveSaveCompressedProxy CompressProxyLZ4 = FArchiveSaveCompressedProxy(CompressDateLZ4, NAME_Zlib, ECompressionFlags::COMPRESS_ZLIB_DEPRECATED);
 #endif
     
     CompressProxyLZ4 << *BufferArchive;
@@ -427,7 +427,7 @@ void FProfileDataProcessRunnable::LoadData(const TArray<uint8>& FileData, int& C
 #if (ENGINE_MINOR_VERSION<19) && (ENGINE_MAJOR_VERSION==4)
         FArchiveLoadCompressedProxy DecompressProxy = FArchiveLoadCompressedProxy(FileData, ECompressionFlags::COMPRESS_ZLIB);
 #else
-        FArchiveLoadCompressedProxy DecompressProxy = FArchiveLoadCompressedProxy(FileData, NAME_Zlib, ECompressionFlags::COMPRESS_ZLIB);
+        FArchiveLoadCompressedProxy DecompressProxy = FArchiveLoadCompressedProxy(FileData, NAME_Zlib, ECompressionFlags::COMPRESS_ZLIB_DEPRECATED);
 #endif
         DecompressProxy << BufAr;
         DeserializeCompressedSave(&BufAr, CpuViewBeginIndex, MemViewBeginIndex, ProfileData, LuaMemNodeList);

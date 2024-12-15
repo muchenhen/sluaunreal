@@ -301,7 +301,245 @@ namespace NS_SLUA {
             str.append(">");
             return str;
         }
-    };    
+    };
+
+    // 基础数学类型特化
+    template<>
+    struct TypeName<UE::Math::TRotator<double>, 0> {
+        static SimpleString value() {
+            return SimpleString("Rotator");
+        }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TVector<double>, 0> {
+        static SimpleString value() {
+            return SimpleString("Vector");
+        }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TQuat<double>, 0> {
+        static SimpleString value() {
+            return SimpleString("Quat");
+        }
+    };
+
+    // 基础UE类型特化
+    template<>
+    struct TypeName<FLinearColor, 0> {
+        static SimpleString value() {
+            return SimpleString("LinearColor");
+        }
+    };
+
+    template<>
+    struct TypeName<FColor, 0> {
+        static SimpleString value() {
+            return SimpleString("Color");
+        }
+    };
+
+    // 范围类型特化
+    template<>
+    struct TypeName<FFloatRange, 0> {
+        static SimpleString value() {
+            return SimpleString("FloatRange");
+        }
+    };
+
+    template<>
+    struct TypeName<FDoubleRange, 0> {
+        static SimpleString value() {
+            return SimpleString("DoubleRange");
+        }
+    };
+
+    // 1. UE Math Types
+    template<>
+    struct TypeName<UE::Math::TIntPoint<int>, 0> {
+        static SimpleString value() { return "IntPoint"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TIntVector3<int>, 0> {
+        static SimpleString value() { return "IntVector3"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TIntVector4<int>, 0> {
+        static SimpleString value() { return "IntVector4"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TVector2<double>, 0> {
+        static SimpleString value() { return "Vector2D"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TVector4<double>, 0> {
+        static SimpleString value() { return "Vector4"; }
+    };
+
+    // 2. Basic UE Types
+    template<>
+    struct TypeName<FRandomStream, 0> {
+        static SimpleString value() { return "RandomStream"; }
+    };
+
+    template<>
+    struct TypeName<FGuid, 0> {
+        static SimpleString value() { return "Guid"; }
+    };
+
+    template<>
+    struct TypeName<FFallbackStruct, 0> {
+        static SimpleString value() { return "FallbackStruct"; }
+    };
+
+    template<>
+    struct TypeName<FDateTime, 0> {
+        static SimpleString value() { return "DateTime"; }
+    };
+
+    // 3. Range & Interval Types
+    template<>
+    struct TypeName<FFloatRangeBound, 0> {
+        static SimpleString value() { return "FloatRangeBound"; }
+    };
+
+    template<>
+    struct TypeName<FDoubleRangeBound, 0> {
+        static SimpleString value() { return "DoubleRangeBound"; }
+    };
+
+    template<>
+    struct TypeName<FInt32RangeBound, 0> {
+        static SimpleString value() { return "Int32RangeBound"; }
+    };
+
+    template<>
+    struct TypeName<FInt32Range, 0> {
+        static SimpleString value() { return "Int32Range"; }
+    };
+
+    // 4. Interp Curve Types
+    template<>
+    struct TypeName<FInterpCurvePoint<float>, 0> {
+        static SimpleString value() { return "InterpCurvePointFloat"; }
+    };
+
+    template<>
+    struct TypeName<FInterpCurvePoint<UE::Math::TVector2<double>>, 0> {
+        static SimpleString value() { return "InterpCurvePointVector2D"; }
+    };
+
+    // 5. Asset Types
+    template<>
+    struct TypeName<FSoftObjectPath, 0> {
+        static SimpleString value() { return "SoftObjectPath"; }
+    };
+
+    template<>
+    struct TypeName<FSoftClassPath, 0> {
+        static SimpleString value() { return "SoftClassPath"; }
+    };
+
+    template<>
+    struct TypeName<FPrimaryAssetType, 0> {
+        static SimpleString value() { return "PrimaryAssetType"; }
+    };
+
+// 插值曲线特化
+    template<>
+    struct TypeName<FInterpCurvePoint<UE::Math::TVector<double>>, 0> {
+        static SimpleString value() { return "InterpCurvePointVector"; }
+    };
+
+    template<>
+    struct TypeName<FInterpCurvePoint<UE::Math::TQuat<double>>, 0> {
+        static SimpleString value() { return "InterpCurvePointQuat"; }
+    };
+
+    template<>
+    struct TypeName<FInterpCurvePoint<FTwoVectors>, 0> {
+        static SimpleString value() { return "InterpCurvePointTwoVectors"; }
+    };
+
+    template<>
+    struct TypeName<FInterpCurvePoint<FLinearColor>, 0> {
+        static SimpleString value() { return "InterpCurvePointLinearColor"; }
+    };
+
+    // 区间类型特化
+    template<>
+    struct TypeName<FFloatInterval, 0> {
+        static SimpleString value() { return "FloatInterval"; }
+    };
+
+    template<>
+    struct TypeName<FDoubleInterval, 0> {
+        static SimpleString value() { return "DoubleInterval"; }
+    };
+
+    template<>
+    struct TypeName<FInt32Interval, 0> {
+        static SimpleString value() { return "Int32Interval"; }
+    };
+
+    // 时间相关类型特化
+    template<>
+    struct TypeName<FFrameNumber, 0> {
+        static SimpleString value() { return "FrameNumber"; }
+    };
+
+    template<>
+    struct TypeName<FFrameTime, 0> {
+        static SimpleString value() { return "FrameTime"; }
+    };
+
+    // 资产相关类型特化
+    template<>
+    struct TypeName<FPrimaryAssetId, 0> {
+        static SimpleString value() { return "PrimaryAssetId"; }
+    };
+
+    template<>
+    struct TypeName<FTopLevelAssetPath, 0> {
+        static SimpleString value() { return "TopLevelAssetPath"; }
+    };
+
+    // UE数学类型特化
+    template<>
+    struct TypeName<UE::Math::TPlane<double>, 0> {
+        static SimpleString value() { return "Plane"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TTransform<double>, 0> {
+        static SimpleString value() { return "Transform"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TMatrix<double>, 0> {
+        static SimpleString value() { return "Matrix"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TBox2<double>, 0> {
+        static SimpleString value() { return "Box2D"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TRay<double>, 0> {
+        static SimpleString value() { return "Ray"; }
+    };
+
+    template<>
+    struct TypeName<UE::Math::TSphere<double>, 0> {
+        static SimpleString value() { return "Sphere"; }
+    };
+    
 
     template<class R, class ...ARGS>
     struct MakeGeneircTypeName {
