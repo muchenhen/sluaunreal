@@ -140,10 +140,9 @@ namespace NS_SLUA {
     #define UD_THREADSAFEPTR 1<<5 // it's a TSharedptr with thread-safe mode in userdata instead of raw pointer
     #define UD_UOBJECT 1<<6 // flag it's an UObject
     #define UD_USTRUCT 1<<7 // flag it's an UStruct
-    #define UD_WEAKUPTR 1<<8 // flag it's a weak UObject ptr
-    #define UD_REFERENCE 1<<9
-    #define UD_VALUETYPE 1<<10 // flag it's a valuetype, don't cache value by ptr
-    #define UD_NETTYPE 1<<11 // flag it's a net replicate property
+    #define UD_REFERENCE 1<<8
+    #define UD_VALUETYPE 1<<9 // flag it's a valuetype, don't cache value by ptr
+    #define UD_NETTYPE 1<<10 // flag it's a net replicate property
 
     struct UDBase {
         uint32 flag;
@@ -219,21 +218,6 @@ namespace NS_SLUA {
         }
     };
 
-    struct WeakUObjectUD {
-        FWeakObjectPtr ud;
-        WeakUObjectUD(FWeakObjectPtr ptr):ud(ptr) {
-
-        }
-
-        bool isValid() {
-            return ud.IsValid();
-        }
-
-        UObject* get() {
-            return ud.Get();
-        }
-    };
-
     class SLUA_UNREAL_API LuaObject
     {
     private:
@@ -269,14 +253,7 @@ namespace NS_SLUA {
             UserData<UObject*>* ptr = (UserData<UObject*>*)getUserdataFast(L, p, "UObject", isnil);
             if (isnil) { return nullptr; }
             CHECK_UD_VALID(ptr);
-            T* t;
-            // if it's a weak UObject, rawget it
-            if (ptr && ptr->flag&UD_WEAKUPTR) {
-                auto wptr = (UserData<WeakUObjectUD*>*)ptr;
-                t = Cast<T>(wptr->ud->get());
-            }
-            else t = ptr?Cast<T>(ptr->ud):nullptr;
-
+            T* t = ptr?Cast<T>(ptr->ud):nullptr;
             if (!t && lua_isuserdata(L, p)) {
                 luaL_getmetafield(L, p, "__name");
                 if (lua_isnil(L, -1)) {
@@ -306,14 +283,12 @@ namespace NS_SLUA {
             auto ptr = (UserData<UObject*>*)getUserdataFast(L, p, "UObject", isnil);
             if (isnil) { return nullptr; }
             CHECK_UD_VALID(ptr);
-            if (!ptr) return maybeAnUDTable<T>(L, p, checkfree);
-            // if it's a weak UObject ptr
-            if (ptr->flag&UD_WEAKUPTR) {
-                auto wptr = (UserData<WeakUObjectUD*>*)ptr;
-                return wptr->ud->get();
+            if (!ptr) {
+                return maybeAnUDTable<T>(L, p, checkfree);
             }
-            else if (isUObjectValid(ptr->ud) || !checkfree)
+            if (isUObjectValid(ptr->ud) || !checkfree) {
                 return ptr->ud;
+            }
             return nullptr;
         }
 
@@ -402,11 +377,7 @@ namespace NS_SLUA {
 
         // check UObject is valid
         static bool isUObjectValid(UObject* obj) {
-#if ENGINE_MAJOR_VERSION >= 5
-            return IsValid(obj);
-#else
-            return obj && !obj->IsUnreachable() && !obj->IsPendingKill();
-#endif
+            return IsValid(obj) && !obj->IsUnreachable();
         }
 
         static inline bool isBinStringProperty(FProperty* inner)
@@ -451,9 +422,14 @@ namespace NS_SLUA {
             CallInfo* ci = L->ci;
             if (index > 0)
             {
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                StkId o = ci->func.p + index;
+                if (o >= L->top.p)
+#else
                 StkId o = ci->func + index;
                 check(index <= L->ci->top - (ci->func + 1));
                 if (o >= L->top)
+#endif
                 {
                     return &L->l_G->nilvalue;
                 }
@@ -464,8 +440,13 @@ namespace NS_SLUA {
             }
             else if (LUA_REGISTRYINDEX < index)
             {  /* negative index */
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                check(index != 0 && -index <= L->top.p - (ci->func.p + 1));
+                return s2v(L->top.p + index);
+#else
                 check(index != 0 && -index <= L->top - (ci->func + 1));
                 return s2v(L->top + index);
+#endif
             }
             else if (index == LUA_REGISTRYINDEX)
             {
@@ -474,15 +455,23 @@ namespace NS_SLUA {
             else
             {  /* upvalues */
                 index = LUA_REGISTRYINDEX - index;
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                if (ttislcf(s2v(ci->func.p)))
+#else
                 check(index <= MAXUPVAL + 1);
                 if (ttislcf(s2v(ci->func)))
+#endif
                 {
                     /* light C function? */
                     return &L->l_G->nilvalue;  /* it has no upvalues */
                 }
                 else
                 {
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                    CClosure* func = clCvalue(s2v(ci->func.p));
+#else
                     CClosure* func = clCvalue(s2v(ci->func));
+#endif
                     return (index <= func->nupvalues) ? &func->upvalue[index - 1] : &L->l_G->nilvalue;
                 }
             }
@@ -506,7 +495,9 @@ namespace NS_SLUA {
             else                                            // upvalues
             {
                 index = LUA_REGISTRYINDEX - index;
+#if LUA_VERSION_RELEASE_NUM < 50406
                 check(index <= MAXUPVAL + 1);
+#endif
                 if (ttislcf(ci->func))
                 {
                     return (TValue*)NULL;                   // light C function has no upvalues
@@ -546,15 +537,21 @@ namespace NS_SLUA {
                 Table* mt = U->metatable;
                 if (mt)
                 {
-#if LUA_VERSION_NUM > 503
+#if LUA_VERSION_NUM >= 504
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                    val_(s2v(L->top.p)).gc = obj2gco(mt);
+                    settt_(s2v(L->top.p), ctb(LUA_VTABLE));
+                    L->top.p++;
+#else
                     val_(s2v(L->top)).gc = obj2gco(mt);
                     settt_(s2v(L->top), ctb(LUA_VTABLE));
+                    L->top++;
+#endif
 #else
                     val_(L->top).gc = obj2gco(mt);
                     settt_((L->top), ctb(LUA_TTABLE));
-#endif
-
                     L->top++;
+#endif
                     lua_pushstring(L, "__name");
                     int tt = lua_rawget(L, -2);
                     if (tt != LUA_TNIL)
@@ -592,7 +589,7 @@ namespace NS_SLUA {
             if(checkfree && !typearg)
                 luaL_error(L,"expect userdata at %d, if you passed an UObject, maybe it's unreachable",p);
 
-            if (LuaObject::isBaseTypeOf(L, typearg, TypeName<T>::value().c_str())) {
+            if (typearg && LuaObject::isBaseTypeOf(L, typearg, TypeName<T>::value().c_str())) {
                 UserData<T*> *udptr = reinterpret_cast<UserData<T*>*>(lua_touserdata(L, p));
                 CHECK_UD_VALID(udptr);
                 return udptr->ud;
@@ -827,31 +824,6 @@ namespace NS_SLUA {
         }
 
         static const char* getType(lua_State* L, int p);
-
-        // for weak UObject
-
-        static int gcWeakUObject(lua_State* L) {
-            luaL_checktype(L, 1, LUA_TUSERDATA);
-            UserData<WeakUObjectUD*>* ud = reinterpret_cast<UserData<WeakUObjectUD*>*>(lua_touserdata(L, 1));
-            ensure(ud->flag&UD_WEAKUPTR);
-            ud->flag |= UD_HADFREE;
-            delete ud->ud;
-            return 0;
-        }
-
-        static int pushWeakType(lua_State* L, WeakUObjectUD* cls) {
-#if LUA_VERSION_NUM > 503 
-            UserData<WeakUObjectUD*>* ud = reinterpret_cast<UserData<WeakUObjectUD*>*>(lua_newuserdatauv(L, sizeof(UserData<WeakUObjectUD*>), 0));
-#else
-            UserData<WeakUObjectUD*>* ud = reinterpret_cast<UserData<WeakUObjectUD*>*>(lua_newuserdata(L, sizeof(UserData<WeakUObjectUD*>)));
-#endif
-            
-            ud->parent = nullptr;
-            ud->ud = cls;
-            ud->flag = UD_WEAKUPTR | UD_AUTOGC;
-            setupMetaTable(L, "UObject", setupInstanceMT, gcWeakUObject);
-            return 1;
-        }
 
         // for TSharePtr version
 

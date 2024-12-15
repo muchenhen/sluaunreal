@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and limitations under the License.
 
 #include "LuaArray.h"
+
+#if LUA_VERSION_RELEASE_NUM >= 50406
+#include <lgc.h>
+#endif
+
 #include "LuaObject.h"
 
 #include "SluaLib.h"
@@ -304,7 +309,9 @@ namespace NS_SLUA {
             prop = PropertyProto::createProperty(PropertyProto(type));
             break;
         }
-        
+        if (!prop) {
+            luaL_error(L, "Unsupported type[%d] of LuaArray!", type);
+        }
         auto array = FScriptArray();
         return push(L, prop, &array, true);
     }
@@ -588,13 +595,22 @@ namespace NS_SLUA {
 
                 CallInfo* ci = L->ci;
 
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                auto func = ci->func.p;
+                setobjs2s(L, L->top.p, func);
+                L->top.p++;
+#else
                 auto func = ci->func;
                 setobjs2s(L, L->top, func);
                 L->top++;
-
+#endif
                 lua_pushvalue(L, -2);
                 lua_setupvalue(L, -2, 1);
+#if LUA_VERSION_RELEASE_NUM >= 50406
+                L->top.p--;
+#else
                 L->top--;
+#endif
             }
             else
             {

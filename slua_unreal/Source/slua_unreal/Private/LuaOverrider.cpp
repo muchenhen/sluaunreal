@@ -8,6 +8,7 @@
 #include "UObject/Script.h"
 #include "LuaVar.h"
 #include "LuaNet.h"
+#include "UObject/Package.h"
 #include "UObject/UObjectBaseUtility.h"
 #include "UObject/UObjectThreadContext.h"
 #include "LuaOverriderInterface.h"
@@ -15,6 +16,8 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Engine/GameEngine.h"
 #include "Engine/NetDriver.h"
+#include "GameFramework/Actor.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/InputSettings.h"
 #include "GameFramework/PlayerController.h"
 
@@ -74,6 +77,7 @@ void ULuaOverrider::luaOverrideFunc(UObject* Context, FFrame& Stack, RESULT_DECL
     bool bCallFromNative = false;
     bool bContextOp = false;
     
+    FMemMark MemMark(FMemStack::Get());
     TArray<FProperty*, TMemStackAllocator<>> propertyToDestructList;
 
     if (Stack.CurrentNativeFunction)
@@ -467,7 +471,7 @@ NS_SLUA::LuaVar* ULuaOverrider::getObjectLuaTable(const UObject* obj, NS_SLUA::l
     return nullptr;
 }
 
-ULuaOverrider::FObjectTable* ULuaOverrider::getObjectTable(const UObject* obj, slua::lua_State* L)
+ULuaOverrider::FObjectTable* ULuaOverrider::getObjectTable(const UObject* obj, NS_SLUA::lua_State* L)
 {
     if (L)
     {
@@ -719,6 +723,7 @@ namespace NS_SLUA
         {
             FRWScopeLock lock(classHookMutex, SLT_Write);
             UClass::ClassConstructorType *classConstructorFuncPtr = nullptr;
+            FMemMark MemMark(FMemStack::Get());
             TArray<UClass*, TMemStackAllocator<>> handleClasses;
             auto superCls = cls;
             while (classConstructorFuncPtr == nullptr && superCls)
@@ -933,7 +938,7 @@ namespace NS_SLUA
 #if WITH_EDITOR
     void clearSuperFuncCache(UClass* cls)
     {
-        if (!cls->IsValidLowLevel() || !IsValid(cls))
+        if (!cls || !cls->IsValidLowLevel() || !IsValid(cls))
         {
             return;
         }
